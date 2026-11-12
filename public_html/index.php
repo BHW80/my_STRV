@@ -532,6 +532,7 @@ $isStravaConnected = !empty($tokenData);
 
                     window.addEventListener('resize', () => {
                         this.resizeCharts();
+                        if (this.map) this.map.invalidateSize();
                     });
                 },
 
@@ -751,16 +752,24 @@ $isStravaConnected = !empty($tokenData);
                     // Start-Zentrum Wien / Österreich als Standard
                     this.map = L.map('leaflet-map', { zoomControl: true }).setView([48.2082, 16.3738], 11);
 
-                    // Elegante, helle CartoDB Positron Kacheln
-                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
+                    // OpenStreetMap (100% frei, zuverlässig, ohne API-Key)
+                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                         maxZoom: 19
                     }).addTo(this.map);
+
+                    // Verhindert graue Kacheln/Fehlausrichtungen bei flexiblen CSS-Layouts
+                    setTimeout(() => {
+                        if (this.map) this.map.invalidateSize();
+                    }, 300);
                 },
 
                 // Zeichnet alle geladenen Polylines auf die Karte
                 renderPolylinesOnMap(acts) {
                     if (!this.map) return;
+
+                    // Größe neu berechnen, falls sich Container geändert hat
+                    this.map.invalidateSize();
 
                     // Alte Layer leeren
                     this.polylineLayers.forEach(l => this.map.removeLayer(l));
