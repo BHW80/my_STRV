@@ -343,34 +343,68 @@ $isStravaConnected = !empty($tokenData);
                 </div>
             </section>
 
-            <!-- Ruder-Spezial Hub (falls vorhanden) -->
-            <section class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs" x-show="rowing.summary?.total_sessions > 0">
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+            <!-- Leistungs- & Effizienz-Hub (Power, W/kg & Steigrate) -->
+            <section class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs" x-show="performance.summary?.total_rides > 0">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
                     <div class="flex items-center space-x-3">
-                        <div class="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
-                            🚣
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg">
+                            ⚡
                         </div>
                         <div>
-                            <h2 class="text-base font-bold text-slate-900">Concept2 Ruder-Analytics</h2>
-                            <p class="text-xs text-slate-500">Ergometer-Leistung &amp; Schlagdynamik</p>
+                            <h2 class="text-base font-bold text-slate-900">Leistungs- &amp; Effizienz-Hub</h2>
+                            <p class="text-xs text-slate-500">Aerobe Ökonomie (EF), Leistungsgewicht &amp; Kletter-Steigrate (VAM)</p>
                         </div>
                     </div>
-                    <span class="text-xs font-semibold px-2.5 py-1 bg-sky-50 text-sky-700 rounded-lg"
-                          x-text="rowing.summary?.total_sessions + ' Einheiten'"></span>
+                    <span class="text-xs font-semibold px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg self-start sm:self-auto"
+                          x-text="performance.summary?.total_rides + ' Einheiten mit Leistungsdaten'"></span>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Aerobe Effizienz (EF) -->
                     <div class="p-4 bg-slate-50/70 rounded-xl border border-slate-100">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ø 500m Split</span>
-                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="rowing.summary?.avg_split_500m_formatted ?? '-'"></div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Aerobe Effizienz (EF)</span>
+                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="performance.summary?.avg_ef ? performance.summary.avg_ef + ' W/bpm' : '-'"></div>
+                        <span class="text-[11px] text-slate-400 mt-1 block">Normalized Power / Ø HF</span>
                     </div>
+
+                    <!-- Leistungsgewicht (W/kg) -->
                     <div class="p-4 bg-slate-50/70 rounded-xl border border-slate-100">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Schlaglänge (DPS)</span>
-                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="rowing.summary?.avg_distance_per_stroke ? rowing.summary.avg_distance_per_stroke + ' m' : '-'"></div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Ø Leistungsgewicht</span>
+                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="performance.summary?.avg_w_kg ? performance.summary.avg_w_kg + ' W/kg' : '-'"></div>
+                        <span class="text-[11px] text-slate-400 mt-1 block" x-text="'Max: ' + (performance.summary?.max_w_kg ?? '-') + ' W/kg'"></span>
                     </div>
+
+                    <!-- Variabilitätsindex (VI) -->
                     <div class="p-4 bg-slate-50/70 rounded-xl border border-slate-100">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Schlagenergie (JPS)</span>
-                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="rowing.summary?.avg_joules_per_stroke ? rowing.summary.avg_joules_per_stroke + ' J' : '-'"></div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Pacing-Gleichmaß (VI)</span>
+                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="performance.summary?.avg_vi ?? '-'"></div>
+                        <span class="text-[11px] text-slate-400 mt-1 block">NP / Ø Watt (1.00-1.05 = Gleichmäßig)</span>
+                    </div>
+
+                    <!-- Kletterleistung (VAM) -->
+                    <div class="p-4 bg-slate-50/70 rounded-xl border border-slate-100">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kletterrate (VAM)</span>
+                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="performance.summary?.max_vam ? performance.summary.max_vam + ' m/h' : '-'"></div>
+                        <span class="text-[11px] text-slate-400 mt-1 block" x-text="'Ø ' + (performance.summary?.avg_vam ?? '-') + ' m/h am Berg'"></span>
+                    </div>
+                </div>
+
+                <!-- Top 5 intensivste Einheiten nach TSS -->
+                <div class="mt-6 pt-5 border-t border-slate-100 space-y-3" x-show="performance.top_performances?.length > 0">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Top 5 forderndste Trainingseinheiten (nach TSS)</span>
+                    <div class="divide-y divide-slate-100">
+                        <template x-for="top in performance.top_performances" :key="top.id">
+                            <div class="py-2.5 flex items-center justify-between text-xs">
+                                <div>
+                                    <div class="font-bold text-slate-800" x-text="top.name"></div>
+                                    <div class="text-slate-400" x-text="top.date + ' • ' + top.distance_km + ' km • ' + top.duration + (top.elevation_gain_m ? ' • ' + top.elevation_gain_m + ' hm' : '')"></div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-black text-brand text-sm" x-text="'TSS ' + top.tss"></div>
+                                    <div class="text-slate-400 text-[11px]" x-text="(top.np ? 'NP ' + top.np + 'W' : '') + (top.w_kg ? ' • ' + top.w_kg + ' W/kg' : '')"></div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </section>
@@ -1045,7 +1079,7 @@ $isStravaConnected = !empty($tokenData);
                 availableYears: [new Date().getFullYear()],
                 stats: {},
                 fitness: {},
-                rowing: {},
+                performance: {},
                 
                 // Aktivitäten State
                 activities: [],
@@ -1087,7 +1121,7 @@ $isStravaConnected = !empty($tokenData);
                     this.initMap();
                     this.loadOverviewStats();
                     this.loadFitnessTrend();
-                    this.loadRowingAnalysis();
+                    this.loadPerformanceHub();
                     this.loadGoals();
                     this.loadActivities(1);
 
@@ -1109,6 +1143,7 @@ $isStravaConnected = !empty($tokenData);
 
                 onYearChange() {
                     this.loadOverviewStats();
+                    this.loadPerformanceHub();
                     this.loadGoals();
                     this.loadActivities(1);
                 },
@@ -1264,16 +1299,16 @@ $isStravaConnected = !empty($tokenData);
                     }
                 },
 
-                // 3. Ruder-Spezial
-                async loadRowingAnalysis() {
+                // 3. Leistungs- & Effizienz-Hub
+                async loadPerformanceHub() {
                     try {
-                        const res = await fetch('/api/rowing_analysis.php');
+                        const res = await fetch(`/api/performance_hub.php?year=${this.selectedYear}`);
                         const data = await res.json();
                         if (data.success) {
-                            this.rowing = data;
+                            this.performance = data;
                         }
                     } catch (e) {
-                        console.error('Rowing error:', e);
+                        console.error('Performance error:', e);
                     }
                 },
 

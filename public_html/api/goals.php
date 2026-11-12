@@ -119,7 +119,7 @@ try {
                     COALESCE(SUM(distance), 0) / 1000.0 AS current_distance,
                     COALESCE(SUM(moving_time), 0) / 3600.0 AS current_time_hours,
                     COALESCE(SUM(total_elevation_gain), 0) AS current_elevation,
-                    COALESCE(SUM(calories), 0) AS current_calories,
+                    COALESCE(SUM(kilojoules), 0) * 0.239006 AS current_calories,
                     COUNT(*) AS current_workouts
                 FROM my_strv_activities
                 WHERE user_id = :user_id 
@@ -199,7 +199,7 @@ try {
                     'distance'  => 'distance / 1000.0',
                     'time'      => 'moving_time / 3600.0',
                     'elevation' => 'total_elevation_gain',
-                    'calories'  => 'calories',
+                    'calories'  => 'kilojoules * 0.239006',
                     'workouts'  => '1',
                 };
 
