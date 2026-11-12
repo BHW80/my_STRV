@@ -1,0 +1,24 @@
+# Credentials & Secrets
+config/config.php
+*.env
+.env.*
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# IDE & Editor settings
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs & Cache
+*.log
+tmp/
+cache/
