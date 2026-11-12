@@ -548,7 +548,16 @@ $isStravaConnected = !empty($tokenData);
                     </div>
 
                     <!-- Environment & Sort Dropdown -->
-                    <div class="flex items-center space-x-2 text-xs">
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <!-- Jahresfilter für Aktivitäten -->
+                        <select x-model="activityFilterYear" @change="loadActivities(1)"
+                                class="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-semibold text-slate-700 focus:outline-none">
+                            <option value="all">Alle Jahre</option>
+                            <template x-for="yr in availableYears" :key="yr">
+                                <option :value="yr" x-text="yr"></option>
+                            </template>
+                        </select>
+
                         <select x-model="activityEnvironment" @change="loadActivities(1)"
                                 class="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-semibold text-slate-700 focus:outline-none">
                             <option value="all">Indoor &amp; Outdoor</option>
@@ -1042,6 +1051,7 @@ $isStravaConnected = !empty($tokenData);
                 activities: [],
                 pagination: { current_page: 1, total_pages: 1, total_items: 0 },
                 activityFilterSport: 'all',
+                activityFilterYear: 'all',
                 activityEnvironment: 'all',
                 activitySortBy: 'date',
                 activityQuery: '',
@@ -1329,8 +1339,10 @@ $isStravaConnected = !empty($tokenData);
                             environment: this.activityEnvironment,
                             sort_by: this.activitySortBy,
                             query: this.activityQuery,
-                            year: this.selectedYear
                         });
+                        if (this.activityFilterYear !== 'all') {
+                            params.append('year', this.activityFilterYear);
+                        }
                         const res = await fetch(`/api/activities.php?${params}`);
                         const data = await res.json();
                         if (data.success) {
@@ -1344,7 +1356,7 @@ $isStravaConnected = !empty($tokenData);
                 },
 
                 setSportFilter(sport) {
-                    this.activityFilterSport = sport;
+                    this.activityFilterSport = (this.activityFilterSport === sport && sport !== 'all') ? 'all' : sport;
                     this.loadActivities(1);
                 },
 

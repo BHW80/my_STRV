@@ -132,18 +132,27 @@ try {
     $params = ['user_id' => $userId];
 
     if ($sportType !== null && $sportType !== 'all') {
-        $where[] = 'sport_type = :sport_type';
-        $params['sport_type'] = $sportType;
+        $st = strtolower($sportType);
+        if ($st === 'ride' || $st === 'rad') {
+            $where[] = "sport_type IN ('Ride', 'VirtualRide', 'MountainBikeRide', 'GravelRide', 'EBikeRide')";
+        } elseif ($st === 'rowing' || $st === 'rudern') {
+            $where[] = "sport_type IN ('Rowing', 'IndoorRowing')";
+        } elseif ($st === 'run' || $st === 'laufen') {
+            $where[] = "sport_type IN ('Run', 'TrailRun', 'VirtualRun', 'Walk', 'Hike')";
+        } else {
+            $where[] = 'sport_type = :sport_type';
+            $params['sport_type'] = $sportType;
+        }
     }
 
-    if ($year !== null && $year > 2000) {
+    if ($year !== null && is_numeric($year) && (int)$year > 2000) {
         $where[] = 'YEAR(start_date) = :year';
-        $params['year'] = $year;
+        $params['year'] = (int)$year;
     }
 
-    if ($search !== null) {
+    if ($search !== null && trim($search) !== '') {
         $where[] = 'name LIKE :search';
-        $params['search'] = '%' . $search . '%';
+        $params['search'] = '%' . trim($search) . '%';
     }
 
     if ($environment === 'indoor') {
