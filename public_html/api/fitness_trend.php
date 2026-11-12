@@ -92,14 +92,35 @@ try {
     }
 
     $lastIdx = count($ctlSeries) - 1;
+    $latestCtl = $lastIdx >= 0 ? $ctlSeries[$lastIdx] : 0.0;
+    $latestAtl = $lastIdx >= 0 ? $atlSeries[$lastIdx] : 0.0;
+    $latestTsb = $lastIdx >= 0 ? $tsbSeries[$lastIdx] : 0.0;
+
+    // ACWR (Acute:Chronic Workload Ratio) zur Verletzungs- & Überlastungsprävention
+    $acwr = ($latestCtl > 0.0) ? round($latestAtl / $latestCtl, 2) : 1.0;
+    $acwrStatus = match (true) {
+        $acwr < 0.8  => 'underload',
+        $acwr <= 1.3 => 'sweetspot',
+        $acwr <= 1.5 => 'caution',
+        default      => 'danger',
+    };
+    $acwrLabel = match ($acwrStatus) {
+        'underload' => 'Unterbelastung / Formverlust',
+        'sweetspot' => 'Sweetspot (Optimaler Aufbau)',
+        'caution'   => 'Erhöhte Ermüdung (Vorsicht)',
+        'danger'    => 'Gefahrenbereich (Überlastung!)',
+    };
 
     echo json_encode([
         'success'      => true,
         'days'         => $days,
         'current'      => [
-            'fitness_ctl' => $lastIdx >= 0 ? $ctlSeries[$lastIdx] : 0,
-            'fatigue_atl' => $lastIdx >= 0 ? $atlSeries[$lastIdx] : 0,
-            'form_tsb'    => $lastIdx >= 0 ? $tsbSeries[$lastIdx] : 0,
+            'fitness_ctl' => $latestCtl,
+            'fatigue_atl' => $latestAtl,
+            'form_tsb'    => $latestTsb,
+            'acwr'        => $acwr,
+            'acwr_status' => $acwrStatus,
+            'acwr_label'  => $acwrLabel,
         ],
         'series'       => [
             'dates'      => $dates,

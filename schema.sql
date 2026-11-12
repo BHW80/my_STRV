@@ -145,4 +145,24 @@ CREATE TABLE IF NOT EXISTS `my_strv_sync_logs` (
     INDEX `idx_my_strv_sync_user` (`user_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------
+-- 7. my_strv_goals: Saisonale & periodische Ziele (Woche / Monat / Jahr)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `my_strv_goals` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `title` VARCHAR(150) NOT NULL,
+    `sport_type` VARCHAR(50) NULL COMMENT 'NULL = Alle Sportarten',
+    `metric_type` ENUM('distance', 'time', 'elevation', 'calories', 'workouts') NOT NULL DEFAULT 'distance',
+    `target_value` DOUBLE NOT NULL,
+    `period_type` ENUM('weekly', 'monthly', 'yearly') NOT NULL DEFAULT 'yearly',
+    `year` INT NOT NULL DEFAULT 2026,
+    `seasonality` ENUM('linear', 'summer_peak', 'winter_peak') NOT NULL DEFAULT 'linear',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_my_strv_goals_user` FOREIGN KEY (`user_id`)
+        REFERENCES `my_strv_users` (`id`) ON DELETE CASCADE,
+    INDEX `idx_my_strv_goals_user` (`user_id`, `year`, `period_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

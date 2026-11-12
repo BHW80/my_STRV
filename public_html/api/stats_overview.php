@@ -111,6 +111,142 @@ try {
         }
     }
 
+    // 6. Athleten-Leistungsdaten laden (für Intensitätszonen)
+    $athStmt = $pdo->prepare('SELECT ftp, weight, max_hr, rest_hr FROM my_strv_athlete_settings WHERE user_id = :user_id');
+    $athStmt->execute(['user_id' => $userId]);
+    $athlete = $athStmt->fetch() ?: ['ftp' => 250, 'weight' => 75.0, 'max_hr' => 190, 'rest_hr' => 50];
+
+    // 7. Regenerations- & Aktivitäts-Quote (Aktivtage vs. Ruhetage)
+    $activeDaysStmt = $pdo->prepare('
+        SELECT COUNT(DISTINCT DATE(start_date)) AS active_days
+        FROM my_strv_activities
+        WHERE user_id = :user_id AND YEAR(start_date) = :year
+    ');
+    $activeDaysStmt->execute(['user_id' => $userId, 'year' => $selectedYear]);
+    $activeDays = (int)$activeDaysStmt->fetchColumn();
+
+    $isCurrentYear = ($selectedYear === (int)date('Y'));
+    $totalDaysInPeriod = $isCurrentYear ? ((int)date('z') + 1) : 365;
+    $restDays = max(0, $totalDaysInPeriod - $activeDays);
+    $restDayRatio = $totalDaysInPeriod > 0 ? round(($restDays / (float)$totalDaysInPeriod) * 100.0, 1) : 0.0;
+
+    // 8. 4-Wochen-Volumentrend (Wochen-Blöcke W-4 bis W-1 rollend)
+    $fourWeeks = [];
+    for ($w = 4; $w >= 1; $w--) {
+        $startDaysAgo = $w * 7 - 1;
+        $endDaysAgo = ($w - 1) * 7;
+        $wStart = date('Y-m-d 00:00:00', strtotime("-$startDaysAgo days"));
+        $wEnd = date('Y-m-d 23:59:59', strtotime("-$endDaysAgo days"));
+
+        $wStmt = $pdo->prepare('
+            SELECT 
+                COUNT(*) AS count,
+                COALESCE(SUM(distance), 0) / 1000.0 AS distance_km,
+                COALESCE(SUM(moving_time), 0) / 3600.0 AS hours,
+                COALESCE(SUM(total_elevation_gain), 0) AS elevation_m
+            FROM my_strv_activities
+            WHERE user_id = :user_id AND start_date >= :w_start AND start_date <= :w_end
+        ');
+        $wStmt->execute([
+            'user_id' => $userId,
+            'w_start' => $wStart,
+            'w_end'   => $wEnd,
+        ]);
+        $wData = $wStmt->fetch();
+
+        $label = match ($w) {
+            1 => 'Aktuelle Woche',
+            2 => 'Vor 1 Woche',
+            3 => 'Vor 2 Wochen',
+            4 => 'Vor 3 Wochen',
+        };
+
+        $fourWeeks[] = [
+            'week_index'   => $w,
+            'label'        => $label,
+            'start_date'   => substr($wStart, 0, 10),
+            'end_date'     => substr($wEnd, 0, 10),
+            'count'        => (int)$wData['count'],
+            'distance_km'  => round((float)$wData['distance_km'], 1),
+            'hours'        => round((float)$wData['hours'], 1),
+            'elevation_m'  => round((float)$wData['elevation_m'], 0),
+        ];
+    }
+
+    // 9. 80/20 Polarisierte Intensitätsanalyse (letzte 28 Tage)
+    $last28DaysStart = date('Y-m-d 00:00:00', strtotime('-27 days'));
+    $act28Stmt = $pdo->prepare('
+        SELECT moving_time, suffer_score, average_watts, average_heartrate
+        FROM my_strv_activities
+        WHERE user_id = :user_id AND start_date >= :start_date
+    ');
+    $act28Stmt->execute([
+        'user_id'    => $userId,
+        'start_date' => $last28DaysStart,
+    ]);
+    $acts28 = $act28Stmt->fetchAll();
+
+    $lowIntensitySec = 0;
+    $highIntensitySec = 0;
+    $ftpThreshold = ((float)($athlete['ftp'] ?? 250)) * 0.85;
+    $hrThreshold = ((float)($athlete['max_hr'] ?? 190)) * 0.80;
+
+    foreach ($acts28 as $act) {
+        $sec = (int)$act['moving_time'];
+        $isHigh = false;
+
+        if ($act['suffer_score'] !== null && (int)$act['suffer_score'] > 60) {
+            $isHigh = true;
+        } elseif ($act['average_watts'] !== null && (float)$act['average_watts'] > $ftpThreshold) {
+            $isHigh = true;
+        } elseif ($act['average_heartrate'] !== null && (float)$act['average_heartrate'] > $hrThreshold) {
+            $isHigh = true;
+        }
+
+        if ($isHigh) {
+            $highIntensitySec += $sec;
+        } else {
+            $lowIntensitySec += $sec;
+        }
+    }
+
+    $totalIntensitySec = $lowIntensitySec + $highIntensitySec;
+    $lowRatioPct = $totalIntensitySec > 0 ? round(($lowIntensitySec / $totalIntensitySec) * 100.0, 1) : 100.0;
+    $highRatioPct = $totalIntensitySec > 0 ? round(($highIntensitySec / $totalIntensitySec) * 100.0, 1) : 0.0;
+
+    // 10. Monatstrend (MoM - Month over Month)
+    $curMonthStart = date('Y-m-01 00:00:00');
+    $prevMonthStart = date('Y-m-01 00:00:00', strtotime('first day of last month'));
+    $prevMonthEnd = date('Y-m-t 23:59:59', strtotime('last day of last month'));
+
+    $curMonthStmt = $pdo->prepare('
+        SELECT 
+            COUNT(*) AS count,
+            COALESCE(SUM(distance), 0) / 1000.0 AS distance_km,
+            COALESCE(SUM(moving_time), 0) / 3600.0 AS hours,
+            COALESCE(SUM(total_elevation_gain), 0) AS elevation_m
+        FROM my_strv_activities
+        WHERE user_id = :user_id AND start_date >= :cur_start
+    ');
+    $curMonthStmt->execute(['user_id' => $userId, 'cur_start' => $curMonthStart]);
+    $curMonthData = $curMonthStmt->fetch();
+
+    $prevMonthStmt = $pdo->prepare('
+        SELECT 
+            COUNT(*) AS count,
+            COALESCE(SUM(distance), 0) / 1000.0 AS distance_km,
+            COALESCE(SUM(moving_time), 0) / 3600.0 AS hours,
+            COALESCE(SUM(total_elevation_gain), 0) AS elevation_m
+        FROM my_strv_activities
+        WHERE user_id = :user_id AND start_date >= :prev_start AND start_date <= :prev_end
+    ');
+    $prevMonthStmt->execute([
+        'user_id'    => $userId,
+        'prev_start' => $prevMonthStart,
+        'prev_end'   => $prevMonthEnd,
+    ]);
+    $prevMonthData = $prevMonthStmt->fetch();
+
     echo json_encode([
         'success'         => true,
         'selected_year'   => $selectedYear,
@@ -131,6 +267,34 @@ try {
         ],
         'sports_breakdown' => $sportsBreakdown,
         'trend_28_days'    => $trend28Days,
+        'rest_days_stats'  => [
+            'total_days'          => $totalDaysInPeriod,
+            'active_days'         => $activeDays,
+            'rest_days'           => $restDays,
+            'rest_day_ratio_pct'  => $restDayRatio,
+        ],
+        'four_weeks_trend' => $fourWeeks,
+        'polarized_80_20'  => [
+            'low_intensity_ratio'  => $lowRatioPct,
+            'high_intensity_ratio' => $highRatioPct,
+            'low_hours'            => round($lowIntensitySec / 3600.0, 1),
+            'high_hours'           => round($highIntensitySec / 3600.0, 1),
+            'total_hours'          => round($totalIntensitySec / 3600.0, 1),
+        ],
+        'mom_trend'        => [
+            'current_month' => [
+                'distance_km' => round((float)$curMonthData['distance_km'], 1),
+                'hours'       => round((float)$curMonthData['hours'], 1),
+                'elevation_m' => round((float)$curMonthData['elevation_m'], 0),
+                'count'       => (int)$curMonthData['count'],
+            ],
+            'previous_month' => [
+                'distance_km' => round((float)$prevMonthData['distance_km'], 1),
+                'hours'       => round((float)$prevMonthData['hours'], 1),
+                'elevation_m' => round((float)$prevMonthData['elevation_m'], 0),
+                'count'       => (int)$prevMonthData['count'],
+            ],
+        ],
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Throwable $e) {

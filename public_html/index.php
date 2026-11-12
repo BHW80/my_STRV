@@ -19,7 +19,7 @@ $isStravaConnected = !empty($tokenData);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>my_STRV - Cockpit</title>
+    <title>my_STRV - Performance Cockpit</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -76,7 +76,7 @@ $isStravaConnected = !empty($tokenData);
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
             
-            <!-- Brand Logo -->
+            <!-- Brand Logo & User -->
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold">
                     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -93,11 +93,35 @@ $isStravaConnected = !empty($tokenData);
                 </div>
             </div>
 
+            <!-- Tab Navigation (Desktop) -->
+            <nav class="hidden md:flex items-center space-x-1 bg-slate-100/80 p-1 rounded-xl">
+                <button @click="switchTab('dashboard')" 
+                        :class="currentTab === 'dashboard' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-900 font-medium'"
+                        class="px-3.5 py-1.5 rounded-lg text-xs transition">
+                    📊 Dashboard
+                </button>
+                <button @click="switchTab('goals')" 
+                        :class="currentTab === 'goals' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-900 font-medium'"
+                        class="px-3.5 py-1.5 rounded-lg text-xs transition">
+                    🎯 Ziele
+                </button>
+                <button @click="switchTab('activities')" 
+                        :class="currentTab === 'activities' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-900 font-medium'"
+                        class="px-3.5 py-1.5 rounded-lg text-xs transition">
+                    📋 Aktivitäten
+                </button>
+                <button @click="switchTab('stats')" 
+                        :class="currentTab === 'stats' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-900 font-medium'"
+                        class="px-3.5 py-1.5 rounded-lg text-xs transition">
+                    ⭐ Statistiken
+                </button>
+            </nav>
+
             <!-- Controls: Year, Sync, Settings, Logout -->
             <div class="flex items-center space-x-2 sm:space-x-3">
                 
                 <!-- Jahresauswahl Dropdown -->
-                <select x-model="selectedYear" @change="loadOverviewStats()"
+                <select x-model="selectedYear" @change="onYearChange()"
                     class="bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand transition">
                     <template x-for="yr in availableYears" :key="yr">
                         <option :value="yr" x-text="yr"></option>
@@ -131,6 +155,30 @@ $isStravaConnected = !empty($tokenData);
                 </a>
             </div>
         </div>
+
+        <!-- Mobile Sub-Nav -->
+        <div class="md:hidden flex border-t border-slate-100 px-4 py-2 bg-slate-50 overflow-x-auto space-x-2">
+            <button @click="switchTab('dashboard')" 
+                    :class="currentTab === 'dashboard' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 font-medium'"
+                    class="px-3 py-1.5 rounded-lg text-xs flex-shrink-0">
+                📊 Dashboard
+            </button>
+            <button @click="switchTab('goals')" 
+                    :class="currentTab === 'goals' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 font-medium'"
+                    class="px-3 py-1.5 rounded-lg text-xs flex-shrink-0">
+                🎯 Ziele
+            </button>
+            <button @click="switchTab('activities')" 
+                    :class="currentTab === 'activities' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 font-medium'"
+                    class="px-3 py-1.5 rounded-lg text-xs flex-shrink-0">
+                📋 Aktivitäten
+            </button>
+            <button @click="switchTab('stats')" 
+                    :class="currentTab === 'stats' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 font-medium'"
+                    class="px-3 py-1.5 rounded-lg text-xs flex-shrink-0">
+                ⭐ Statistiken
+            </button>
+        </div>
     </header>
 
     <!-- Main Content Area -->
@@ -157,219 +205,702 @@ $isStravaConnected = !empty($tokenData);
             </div>
         <?php endif; ?>
 
-        <!-- KPI Cards Grid -->
-        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <!-- Distanz -->
-            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Distanz (<span x-text="selectedYear"></span>)</span>
-                <div class="mt-2 flex items-baseline space-x-2">
-                    <span class="text-3xl font-black text-slate-900 tracking-tight" x-text="stats.yearly?.distance_km ?? '0'"></span>
-                    <span class="text-sm font-semibold text-slate-500">km</span>
-                </div>
-                <div class="mt-2 text-xs text-slate-400">
-                    All-Time: <strong class="text-slate-600" x-text="stats.all_time?.total_distance_km ?? '0'"></strong> km
-                </div>
-            </div>
+        <!-- ================================================================= -->
+        <!-- TAB 1: DASHBOARD                                                  -->
+        <!-- ================================================================= -->
+        <div x-show="currentTab === 'dashboard'" class="space-y-8">
 
-            <!-- Höhenmeter -->
-            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Höhenmeter (<span x-text="selectedYear"></span>)</span>
-                <div class="mt-2 flex items-baseline space-x-2">
-                    <span class="text-3xl font-black text-slate-900 tracking-tight" x-text="stats.yearly?.elevation_m ?? '0'"></span>
-                    <span class="text-sm font-semibold text-slate-500">m</span>
+            <!-- KPI Cards Grid (mit ACWR & Form) -->
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <!-- Distanz -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Distanz (<span x-text="selectedYear"></span>)</span>
+                    <div class="mt-2 flex items-baseline space-x-2">
+                        <span class="text-3xl font-black text-slate-900 tracking-tight" x-text="stats.yearly?.distance_km ?? '0'"></span>
+                        <span class="text-sm font-semibold text-slate-500">km</span>
+                    </div>
+                    <div class="mt-2 text-xs text-slate-400">
+                        All-Time: <strong class="text-slate-600" x-text="stats.all_time?.total_distance_km ?? '0'"></strong> km
+                    </div>
                 </div>
-                <div class="mt-2 text-xs text-slate-400">
-                    All-Time: <strong class="text-slate-600" x-text="stats.all_time?.total_elevation_m ?? '0'"></strong> m
-                </div>
-            </div>
 
-            <!-- Trainingszeit -->
-            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Trainingszeit (<span x-text="selectedYear"></span>)</span>
-                <div class="mt-2 flex items-baseline space-x-2">
-                    <span class="text-3xl font-black text-slate-900 tracking-tight" x-text="stats.yearly?.moving_hours ?? '0'"></span>
-                    <span class="text-sm font-semibold text-slate-500">Std.</span>
+                <!-- Höhenmeter -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Höhenmeter (<span x-text="selectedYear"></span>)</span>
+                    <div class="mt-2 flex items-baseline space-x-2">
+                        <span class="text-3xl font-black text-slate-900 tracking-tight" x-text="stats.yearly?.elevation_m ?? '0'"></span>
+                        <span class="text-sm font-semibold text-slate-500">m</span>
+                    </div>
+                    <div class="mt-2 text-xs text-slate-400">
+                        All-Time: <strong class="text-slate-600" x-text="stats.all_time?.total_elevation_m ?? '0'"></strong> m
+                    </div>
                 </div>
-                <div class="mt-2 text-xs text-slate-400">
-                    Einheiten: <strong class="text-slate-600" x-text="stats.yearly?.count ?? '0'"></strong>
-                </div>
-            </div>
 
-            <!-- TSB Formwert -->
-            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Form (TSB)</span>
-                    <span class="px-2 py-0.5 text-xs font-bold rounded-md"
-                          :class="getTsbBadgeClass(fitness.current?.form_tsb)">
-                        <span x-text="getTsbLabel(fitness.current?.form_tsb)"></span>
-                    </span>
+                <!-- Trainingszeit -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Trainingszeit (<span x-text="selectedYear"></span>)</span>
+                    <div class="mt-2 flex items-baseline space-x-2">
+                        <span class="text-3xl font-black text-slate-900 tracking-tight" x-text="stats.yearly?.moving_hours ?? '0'"></span>
+                        <span class="text-sm font-semibold text-slate-500">Std.</span>
+                    </div>
+                    <div class="mt-2 text-xs text-slate-400">
+                        Einheiten: <strong class="text-slate-600" x-text="stats.yearly?.count ?? '0'"></strong>
+                    </div>
                 </div>
-                <div class="mt-2 flex items-baseline space-x-2">
-                    <span class="text-3xl font-black tracking-tight" 
-                          :class="fitness.current?.form_tsb >= 0 ? 'text-emerald-600' : 'text-slate-900'"
-                          x-text="(fitness.current?.form_tsb > 0 ? '+' : '') + (fitness.current?.form_tsb ?? '0')"></span>
-                    <span class="text-xs text-slate-400 font-medium">Score</span>
-                </div>
-                <div class="mt-2 text-xs text-slate-400 flex justify-between">
-                    <span>Fitness (CTL): <strong class="text-slate-700" x-text="fitness.current?.fitness_ctl ?? '0'"></strong></span>
-                    <span>Ermüdung: <strong class="text-slate-700" x-text="fitness.current?.fatigue_atl ?? '0'"></strong></span>
-                </div>
-            </div>
-        </section>
 
-        <!-- Charts Grid (Jahresvergleich & Fitness-Modell) -->
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Form (TSB) & ACWR Belastungs-Ampel -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Form &amp; Belastung</span>
+                        <!-- ACWR Badge -->
+                        <span class="px-2 py-0.5 text-xs font-bold rounded-md"
+                              :class="getAcwrBadgeClass(fitness.current?.acwr_status)">
+                            <span x-text="'ACWR ' + (fitness.current?.acwr ?? '1.0')"></span>
+                        </span>
+                    </div>
+                    <div class="mt-2 flex items-baseline space-x-2">
+                        <span class="text-3xl font-black tracking-tight" 
+                              :class="fitness.current?.form_tsb >= 0 ? 'text-emerald-600' : 'text-slate-900'"
+                              x-text="(fitness.current?.form_tsb > 0 ? '+' : '') + (fitness.current?.form_tsb ?? '0')"></span>
+                        <span class="text-xs text-slate-400 font-medium">TSB Form</span>
+                    </div>
+                    <div class="mt-2 text-xs text-slate-500 flex justify-between items-center">
+                        <span class="truncate max-w-[170px]" :title="fitness.current?.acwr_label" x-text="fitness.current?.acwr_label ?? 'Sweetspot'"></span>
+                        <span class="text-slate-400 font-medium">CTL: <strong class="text-slate-700" x-text="fitness.current?.fitness_ctl ?? '0'"></strong></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 80/20 Polarisierte Trainingsanalyse (Letzte 28 Tage) -->
+            <section class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs" x-show="stats.polarized_80_20">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Trainingssteuerung</span>
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700">80/20 Polarisiert</span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 mt-0.5">Intensitätsverteilung (Letzte 4 Wochen)</h3>
+                    </div>
+                    <div class="text-xs text-slate-500 font-medium">
+                        Gesamt: <strong class="text-slate-700" x-text="stats.polarized_80_20?.total_hours + ' Std.'"></strong>
+                    </div>
+                </div>
+
+                <!-- Balken-Grafik -->
+                <div class="space-y-2">
+                    <div class="w-full h-4 bg-slate-100 rounded-full overflow-hidden flex">
+                        <div class="h-full bg-emerald-500 transition-all duration-500" 
+                             :style="'width: ' + (stats.polarized_80_20?.low_intensity_ratio ?? 80) + '%'"
+                             :title="'Grundlage: ' + stats.polarized_80_20?.low_intensity_ratio + '%'"></div>
+                        <div class="h-full bg-rose-500 transition-all duration-500" 
+                             :style="'width: ' + (stats.polarized_80_20?.high_intensity_ratio ?? 20) + '%'"
+                             :title="'Intensiv: ' + stats.polarized_80_20?.high_intensity_ratio + '%'"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-xs font-semibold">
+                        <span class="text-emerald-700 flex items-center space-x-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                            <span>Grundlage / Z1-Z2: <strong x-text="stats.polarized_80_20?.low_intensity_ratio + '%'"></strong> (<span x-text="stats.polarized_80_20?.low_hours + 'h'"></span>)</span>
+                        </span>
+                        <span class="text-rose-700 flex items-center space-x-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
+                            <span>Intensiv / Z3-Z5: <strong x-text="stats.polarized_80_20?.high_intensity_ratio + '%'"></strong> (<span x-text="stats.polarized_80_20?.high_hours + 'h'"></span>)</span>
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Grid (Jahresvergleich & Fitness-Modell) -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Chart 1: Kumulativer Jahresvergleich -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Kumulierter Jahresvergleich</h2>
+                            <p class="text-xs text-slate-500">Kilometer-Fortschritt Tag 1 bis Tag 365</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-brand inline-block"></span>
+                            <span class="text-xs font-semibold text-slate-600">Aktuelles Jahr</span>
+                        </div>
+                    </div>
+                    <div id="chart-yearly" class="chart-box"></div>
+                </div>
+
+                <!-- Chart 2: Fitness & Form (CTL / ATL / TSB) -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Fitness &amp; Ermüdung</h2>
+                            <p class="text-xs text-slate-500">CTL (42 Tage), ATL (7 Tage), Form (TSB)</p>
+                        </div>
+                        <div class="flex items-center space-x-3 text-xs font-medium">
+                            <span class="flex items-center text-sky-600"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 mr-1.5"></span>CTL</span>
+                            <span class="flex items-center text-rose-500"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 mr-1.5"></span>ATL</span>
+                            <span class="flex items-center text-emerald-600"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5"></span>TSB</span>
+                        </div>
+                    </div>
+                    <div id="chart-fitness" class="chart-box"></div>
+                </div>
+            </section>
+
+            <!-- Ruder-Spezial Hub (falls vorhanden) -->
+            <section class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs" x-show="rowing.summary?.total_sessions > 0">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
+                            🚣
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Concept2 Ruder-Analytics</h2>
+                            <p class="text-xs text-slate-500">Ergometer-Leistung &amp; Schlagdynamik</p>
+                        </div>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-1 bg-sky-50 text-sky-700 rounded-lg"
+                          x-text="rowing.summary?.total_sessions + ' Einheiten'"></span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="p-4 bg-slate-50/70 rounded-xl border border-slate-100">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ø 500m Split</span>
+                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="rowing.summary?.avg_split_500m_formatted ?? '-'"></div>
+                    </div>
+                    <div class="p-4 bg-slate-50/70 rounded-xl border border-slate-100">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Schlaglänge (DPS)</span>
+                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="rowing.summary?.avg_distance_per_stroke ? rowing.summary.avg_distance_per_stroke + ' m' : '-'"></div>
+                    </div>
+                    <div class="p-4 bg-slate-50/70 rounded-xl border border-slate-100">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Schlagenergie (JPS)</span>
+                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="rowing.summary?.avg_joules_per_stroke ? rowing.summary.avg_joules_per_stroke + ' J' : '-'"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GPS-Heatmap & Vorschau -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">GPS Streckennetz &amp; Heatmap</h2>
+                            <p class="text-xs text-slate-500">Alle aufgezeichneten Outdoor-Touren auf einen Blick</p>
+                        </div>
+                        <span class="text-xs font-medium text-slate-400" x-text="activities.length + ' Strecken geladen'"></span>
+                    </div>
+                    <div id="leaflet-map" class="flex-grow"></div>
+                </div>
+
+                <!-- Schnelle Übersicht letzte Touren -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-base font-bold text-slate-900">Letzte Touren</h2>
+                            <button @click="switchTab('activities')" class="text-xs font-bold text-brand hover:underline">Alle ansehen &rarr;</button>
+                        </div>
+                        <div class="divide-y divide-slate-100 max-h-[460px] overflow-y-auto pr-1">
+                            <template x-for="act in activities.slice(0, 5)" :key="act.id">
+                                <div class="py-3 hover:bg-slate-50 p-2 rounded-xl transition cursor-pointer"
+                                     @click="focusActivityOnMap(act)">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[180px]" x-text="act.name"></span>
+                                        <span class="text-xs font-semibold text-brand" x-text="act.distance_km + ' km'"></span>
+                                    </div>
+                                    <div class="flex items-center justify-between mt-1 text-xs text-slate-400">
+                                        <span x-text="act.date_formatted"></span>
+                                        <span x-text="act.moving_time_formatted"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- TAB 2: ZIELE (GOALS & PACING MIT SAISONKURVE)                     -->
+        <!-- ================================================================= -->
+        <div x-show="currentTab === 'goals'" class="space-y-6">
             
-            <!-- Chart 1: Kumulativer Jahresvergleich -->
-            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h2 class="text-base font-bold text-slate-900">Kumulierter Jahresvergleich</h2>
-                        <p class="text-xs text-slate-500">Kilometer-Fortschritt Tag 1 bis Tag 365</p>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-3 h-3 rounded-full bg-brand inline-block"></span>
-                        <span class="text-xs font-semibold text-slate-600">Aktuelles Jahr</span>
-                    </div>
+            <!-- Ziele Header Bar -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
+                <div>
+                    <h2 class="text-xl font-black text-slate-900">Trainings-Ziele &amp; Pacing</h2>
+                    <p class="text-xs sm:text-sm text-slate-500">Wochen-, Monats- und Jahresziele mit automatischer Soll/Ist-Berechnung und Saisonkurven</p>
                 </div>
-                <div id="chart-yearly" class="chart-box"></div>
+                <button @click="openNewGoalModal()" 
+                        class="px-4 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Neues Ziel anlegen</span>
+                </button>
             </div>
 
-            <!-- Chart 2: Fitness & Form (CTL / ATL / TSB) -->
-            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h2 class="text-base font-bold text-slate-900">Fitness &amp; Ermüdung</h2>
-                        <p class="text-xs text-slate-500">CTL (42 Tage), ATL (7 Tage), Form (TSB)</p>
-                    </div>
-                    <div class="flex items-center space-x-3 text-xs font-medium">
-                        <span class="flex items-center text-sky-600"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 mr-1.5"></span>CTL</span>
-                        <span class="flex items-center text-rose-500"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 mr-1.5"></span>ATL</span>
-                        <span class="flex items-center text-emerald-600"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5"></span>TSB</span>
-                    </div>
-                </div>
-                <div id="chart-fitness" class="chart-box"></div>
-            </div>
-        </section>
-
-        <!-- Ruder-Spezial Hub -->
-        <section class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs" x-show="rowing.summary?.total_sessions > 0">
-            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-                <div class="flex items-center space-x-3">
-                    <div class="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
-                        🚣
-                    </div>
-                    <div>
-                        <h2 class="text-base font-bold text-slate-900">Ruder-Performance Hub</h2>
-                        <p class="text-xs text-slate-500">Schlaganalyse, DPS und 500m-Pace</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <span class="text-xs font-semibold text-slate-400">Durchschnitts-Pace:</span>
-                    <span class="text-sm font-black text-slate-800 ml-1" x-text="rowing.summary?.avg_split_formatted + ' / 500m'"></span>
-                </div>
+            <!-- Keine Ziele hinterlegt -->
+            <div x-show="goals.length === 0" class="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-3">
+                <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-xl">🎯</div>
+                <h3 class="font-bold text-slate-800">Noch keine Ziele für <span x-text="selectedYear"></span> definiert</h3>
+                <p class="text-xs text-slate-500 max-w-md mx-auto">Setze dir ein Jahresziel (z. B. 4.000 km Rennrad mit Sommer-Peak) oder ein Wochenziel, um deinen Trainingsfortschritt live zu überwachen.</p>
+                <button @click="openNewGoalModal()" class="mt-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl transition">Jetzt erstes Ziel anlegen</button>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Scatter Chart: SPM vs DPS -->
-                <div class="lg:col-span-2">
-                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Schlagzahl (SPM) vs. Distanz pro Schlag (DPS)</div>
-                    <div id="chart-rowing-scatter" class="chart-box"></div>
-                </div>
+            <!-- Ziel-Karten Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" x-show="goals.length > 0">
+                <template x-for="g in goals" :key="g.id">
+                    <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between space-y-4">
+                        
+                        <!-- Top Row: Title, Sport & Delete -->
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-md"
+                                          :class="g.period_type === 'yearly' ? 'bg-amber-100 text-amber-800' : (g.period_type === 'monthly' ? 'bg-sky-100 text-sky-800' : 'bg-purple-100 text-purple-800')"
+                                          x-text="g.period_type === 'yearly' ? 'Jahresziel ' + g.year : (g.period_type === 'monthly' ? 'Monatsziel' : 'Wochenziel')"></span>
+                                    <span class="text-xs font-bold text-slate-500" x-text="g.sport_type === 'all' ? 'Alle Sportarten' : g.sport_type"></span>
+                                </div>
+                                <h3 class="text-lg font-black text-slate-900 mt-1" x-text="g.title"></h3>
+                            </div>
+                            <button @click="deleteGoal(g.id)" class="text-slate-300 hover:text-rose-600 transition p-1" title="Ziel löschen">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
 
-                <!-- Top Ergometer Einheiten -->
-                <div class="space-y-3">
-                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Top 5 schnellste 500m-Splits (≥ 1000m)</div>
-                    <div class="divide-y divide-slate-100">
-                        <template x-for="(top, idx) in rowing.top_performances" :key="top.id">
-                            <div class="py-2.5 flex items-center justify-between text-xs">
+                        <!-- Progress Bar & Values -->
+                        <div class="space-y-2">
+                            <div class="flex items-baseline justify-between">
                                 <div>
-                                    <div class="font-bold text-slate-800" x-text="top.name"></div>
-                                    <div class="text-slate-400" x-text="top.date + ' • ' + (top.distance_m / 1000).toFixed(1) + ' km'"></div>
+                                    <span class="text-2xl font-black text-slate-900" x-text="g.current_value"></span>
+                                    <span class="text-sm font-semibold text-slate-400">/ <span x-text="g.target_value + ' ' + g.unit"></span></span>
+                                </div>
+                                <span class="text-sm font-extrabold text-brand" x-text="g.progress_percent + '%'"></span>
+                            </div>
+                            <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-brand rounded-full transition-all duration-500"
+                                     :style="'width: ' + Math.min(100, g.progress_percent) + '%'"></div>
+                            </div>
+                        </div>
+
+                        <!-- Pacing & Schedule Status -->
+                        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100 grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <span class="text-slate-400 block text-[11px] font-semibold">Soll-Stand bis heute</span>
+                                <strong class="text-slate-800 text-sm font-bold" x-text="g.expected_value_today + ' ' + g.unit"></strong>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[11px] font-semibold">Zeitplan (Pacing)</span>
+                                <span class="font-extrabold text-sm"
+                                      :class="g.is_ahead ? 'text-emerald-600' : 'text-rose-600'"
+                                      x-text="(g.is_ahead ? '+' : '') + g.delta_to_schedule + ' ' + g.unit + (g.is_ahead ? ' (Voraus)' : ' (Rückstand)')"></span>
+                            </div>
+                            <div class="col-span-2 pt-1 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-400">
+                                <span>Restzeit: <strong class="text-slate-600" x-text="g.remaining_days + ' Tage'"></strong></span>
+                                <span x-text="'Kurve: ' + (g.seasonality === 'summer_peak' ? 'Sommer-Peak' : (g.seasonality === 'winter_peak' ? 'Winter-Peak' : 'Gleichmäßig'))"></span>
+                            </div>
+                        </div>
+
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- TAB 3: AKTIVITÄTEN (LISTEN, FILTER & AUSKLAPPBARE ZONEN)            -->
+        <!-- ================================================================= -->
+        <div x-show="currentTab === 'activities'" class="space-y-6">
+            
+            <!-- Filter Bar Card -->
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-black text-slate-900">Aktivitäten &amp; Zonen-Analyse</h2>
+                        <p class="text-xs text-slate-500">Vollständige Trainingshistorie mit HF- und Watt-Zonenverteilung</p>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative w-full md:w-72">
+                        <input type="text" x-model="activityQuery" @input.debounce.300ms="loadActivities(1)"
+                               placeholder="Aktivität suchen..." 
+                               class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-brand">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Chips Row: Sportart, Environment, Sortierung -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                    
+                    <!-- Sportart Filter Chips -->
+                    <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                        <button @click="setSportFilter('all')" 
+                                :class="activityFilterSport === 'all' ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                class="px-3 py-1.5 rounded-lg transition">Alle</button>
+                        <button @click="setSportFilter('Ride')" 
+                                :class="activityFilterSport === 'Ride' ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                class="px-3 py-1.5 rounded-lg transition">🚴 Rad</button>
+                        <button @click="setSportFilter('Rowing')" 
+                                :class="activityFilterSport === 'Rowing' ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                class="px-3 py-1.5 rounded-lg transition">🚣 Rudern</button>
+                        <button @click="setSportFilter('Run')" 
+                                :class="activityFilterSport === 'Run' ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                class="px-3 py-1.5 rounded-lg transition">🏃 Laufen</button>
+                    </div>
+
+                    <!-- Environment & Sort Dropdown -->
+                    <div class="flex items-center space-x-2 text-xs">
+                        <select x-model="activityEnvironment" @change="loadActivities(1)"
+                                class="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-semibold text-slate-700 focus:outline-none">
+                            <option value="all">Indoor &amp; Outdoor</option>
+                            <option value="outdoor">Nur Outdoor</option>
+                            <option value="indoor">Nur Indoor</option>
+                        </select>
+
+                        <select x-model="activitySortBy" @change="loadActivities(1)"
+                                class="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 font-semibold text-slate-700 focus:outline-none">
+                            <option value="date">Neueste zuerst</option>
+                            <option value="distance">Nach Distanz</option>
+                            <option value="duration">Nach Dauer</option>
+                            <option value="elevation">Nach Höhenmetern</option>
+                            <option value="watts">Nach Watt</option>
+                        </select>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Activity List Feed (Ausklappbare Cards) -->
+            <div class="space-y-3">
+                <template x-for="act in activities" :key="act.id">
+                    <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs transition hover:border-slate-300">
+                        
+                        <!-- Header Line: Click toggles expansion -->
+                        <div class="cursor-pointer" @click="toggleActivityExpand(act.id)">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <div class="flex items-center space-x-2 text-xs">
+                                        <span class="font-bold text-brand" x-text="act.sport_type + (act.is_indoor ? ' (Indoor)' : '')"></span>
+                                        <span class="text-slate-300">•</span>
+                                        <span class="text-slate-500" x-text="act.date_formatted"></span>
+                                    </div>
+                                    <h3 class="text-base font-bold text-slate-900 mt-1" x-text="act.name"></h3>
                                 </div>
                                 <div class="text-right">
-                                    <div class="font-black text-brand text-sm" x-text="top.split_formatted"></div>
-                                    <div class="text-slate-400" x-text="top.avg_watts ? top.avg_watts + ' W' : ''"></div>
+                                    <div class="text-lg font-black text-slate-900" x-text="act.distance_km + ' km'"></div>
+                                    <div class="text-xs text-slate-400 font-medium" x-text="act.moving_time_formatted"></div>
                                 </div>
                             </div>
-                        </template>
-                    </div>
-                </div>
-            </div>
-        </section>
 
-        <!-- Leaflet GPS-Heatmap & Aktivitätenliste -->
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Summary Badges Row (Always Visible) -->
+                            <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
+                                <span x-show="act.elevation_gain_m > 0" class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-semibold" x-text="act.elevation_gain_m + ' hm'"></span>
+                                <span x-show="act.avg_watts" class="px-2 py-0.5 bg-sky-50 text-sky-700 rounded-md font-semibold" x-text="act.avg_watts + ' W (Ø)'"></span>
+                                <span x-show="act.normalized_power" class="px-2 py-0.5 bg-sky-100 text-sky-800 rounded-md font-semibold" x-text="'NP ' + act.normalized_power + ' W'"></span>
+                                <span x-show="act.avg_hr" class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-md font-semibold" x-text="'HF ' + act.avg_hr + ' bpm'"></span>
+                                <span x-show="act.tss" class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-md font-semibold" x-text="'TSS ' + act.tss"></span>
+                                <span x-show="act.suffer_score" class="px-2 py-0.5 bg-orange-50 text-orange-700 rounded-md font-semibold" x-text="'Suffer ' + act.suffer_score"></span>
+                                <span class="ml-auto text-[11px] font-bold text-slate-400 flex items-center space-x-1">
+                                    <span x-text="expandedActivityId === act.id ? 'Einklappen' : 'Details & Zonen'"></span>
+                                    <svg class="w-3.5 h-3.5 transition-transform" :class="expandedActivityId === act.id ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Ausklappbarer Detailbereich (Parameter Grid & Zonen) -->
+                        <div x-show="expandedActivityId === act.id" x-collapse class="mt-4 pt-4 border-t border-slate-100 space-y-4">
+                            
+                            <!-- Parameter Grid (2 Spalten wie in Android) -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Geschwindigkeit</span>
+                                    <strong class="text-slate-800 text-sm font-bold" x-text="act.avg_speed_kmh ? act.avg_speed_kmh + ' km/h' : '-'"></strong>
+                                    <span class="text-[10px] text-slate-400 block" x-show="act.max_speed_kmh" x-text="'Max: ' + act.max_speed_kmh + ' km/h'"></span>
+                                </div>
+                                <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Leistung &amp; NP</span>
+                                    <strong class="text-slate-800 text-sm font-bold" x-text="act.avg_watts ? act.avg_watts + ' W' : '-'"></strong>
+                                    <span class="text-[10px] text-slate-400 block" x-show="act.w_kg" x-text="act.w_kg + ' W/kg'"></span>
+                                </div>
+                                <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Herzfrequenz</span>
+                                    <strong class="text-slate-800 text-sm font-bold" x-text="act.avg_hr ? act.avg_hr + ' bpm' : '-'"></strong>
+                                    <span class="text-[10px] text-slate-400 block" x-show="act.max_hr" x-text="'Max: ' + act.max_hr + ' bpm'"></span>
+                                </div>
+                                <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Trittfrequenz &amp; Kalorien</span>
+                                    <strong class="text-slate-800 text-sm font-bold" x-text="act.avg_cadence ? act.avg_cadence + ' rpm' : (act.calories ? act.calories + ' kcal' : '-')"></strong>
+                                    <span class="text-[10px] text-slate-400 block" x-show="act.calories && act.avg_cadence" x-text="act.calories + ' kcal'"></span>
+                                </div>
+                            </div>
+
+                            <!-- Herzfrequenz-Zonen (Z1-Z5) -->
+                            <div x-show="act.hr_zones && act.hr_zones.length > 0" class="p-4 bg-slate-50/70 rounded-xl border border-slate-100 space-y-2">
+                                <div class="text-xs font-bold text-slate-700 flex items-center justify-between">
+                                    <span>❤️ Herzfrequenz-Zonenverteilung (Z1 - Z5)</span>
+                                </div>
+                                <div class="w-full h-3 rounded-full overflow-hidden flex bg-slate-200">
+                                    <template x-for="z in act.hr_zones" :key="z.zone">
+                                        <div class="h-full transition-all" :style="'width: ' + z.percent + '%; background-color: ' + z.color" :title="z.zone + ' ' + z.name + ': ' + z.percent + '%'"></div>
+                                    </template>
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1 text-[11px]">
+                                    <template x-for="z in act.hr_zones" :key="z.zone">
+                                        <div class="flex items-center space-x-1.5">
+                                            <span class="w-2 h-2 rounded-full inline-block" :style="'background-color: ' + z.color"></span>
+                                            <span class="text-slate-600 font-semibold" x-text="z.zone + ': ' + z.percent + '%'"></span>
+                                            <span class="text-slate-400" x-text="'(' + z.range_label + ')'"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Coggan Watt-Zonen (Z1-Z7) -->
+                            <div x-show="act.power_zones && act.power_zones.length > 0" class="p-4 bg-slate-50/70 rounded-xl border border-slate-100 space-y-2">
+                                <div class="text-xs font-bold text-slate-700 flex items-center justify-between">
+                                    <span>⚡ Coggan-Leistungszonen (Z1 - Z7)</span>
+                                </div>
+                                <div class="w-full h-3 rounded-full overflow-hidden flex bg-slate-200">
+                                    <template x-for="pz in act.power_zones" :key="pz.zone">
+                                        <div class="h-full transition-all" :style="'width: ' + pz.percent + '%; background-color: ' + pz.color" :title="pz.zone + ' ' + pz.name + ': ' + pz.percent + '%'"></div>
+                                    </template>
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                                    <template x-for="pz in act.power_zones" :key="pz.zone">
+                                        <div class="flex items-center space-x-1.5">
+                                            <span class="w-2 h-2 rounded-full inline-block" :style="'background-color: ' + pz.color"></span>
+                                            <span class="text-slate-600 font-semibold" x-text="pz.zone + ': ' + pz.percent + '%'"></span>
+                                            <span class="text-slate-400" x-text="'(' + pz.range_label + ')'"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </template>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div class="p-4 bg-white border border-slate-200/90 rounded-2xl flex items-center justify-between text-xs text-slate-600">
+                <button @click="loadActivities(pagination.current_page - 1)" 
+                        :disabled="pagination.current_page <= 1"
+                        class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 font-semibold transition">
+                    &larr; Vorherige Seite
+                </button>
+                <span>Seite <strong class="text-slate-900" x-text="pagination.current_page"></strong> von <strong class="text-slate-900" x-text="pagination.total_pages || 1"></strong> (<span x-text="pagination.total_items"></span> Touren)</span>
+                <button @click="loadActivities(pagination.current_page + 1)" 
+                        :disabled="pagination.current_page >= pagination.total_pages"
+                        class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 font-semibold transition">
+                    Nächste Seite &rarr;
+                </button>
+            </div>
+
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- TAB 4: STATISTIKEN & AGGREGATIONEN                                -->
+        <!-- ================================================================= -->
+        <div x-show="currentTab === 'stats'" class="space-y-6">
             
-            <!-- GPS-Karte (2 Spalten) -->
-            <div class="lg:col-span-2 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col">
-                <div class="flex items-center justify-between mb-4">
+            <!-- 4-Wochen-Volumentrend (Wochen-Karten) -->
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+                <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-base font-bold text-slate-900">GPS Streckennetz &amp; Heatmap</h2>
-                        <p class="text-xs text-slate-500">Alle aufgezeichneten Outdoor-Touren auf einen Blick</p>
+                        <h2 class="text-lg font-black text-slate-900">4-Wochen-Volumentrend</h2>
+                        <p class="text-xs text-slate-500">Rollende Wochenblöcke der letzten 28 Tage im direkten Vergleich</p>
                     </div>
-                    <span class="text-xs font-medium text-slate-400" x-text="activities.length + ' Strecken geladen'"></span>
                 </div>
-                <div id="leaflet-map" class="flex-grow"></div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <template x-for="w in stats.four_weeks_trend" :key="w.week_index">
+                        <div class="p-4 rounded-xl border border-slate-100 bg-slate-50/70 flex flex-col justify-between space-y-2">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-bold text-slate-800" x-text="w.label"></span>
+                                <span class="text-slate-400 text-[10px]" x-text="w.start_date + ' bis ' + w.end_date"></span>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-black text-slate-900" x-text="w.distance_km + ' km'"></div>
+                                <div class="text-xs text-slate-500 font-medium" x-text="w.hours + ' Std. • ' + w.elevation_m + ' hm • ' + w.count + 'x'"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
             </div>
 
-            <!-- Letzte Aktivitäten (1 Spalte) -->
-            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+            <!-- Regenerations-Quote & Monatstrend (MoM) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- Ruhetage-Monitoring -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Trainings-Konsistenz &amp; Regeneration</h3>
+                        <p class="text-xs text-slate-500 mb-4">Aktivtage vs. Ruhetage im Jahr <span x-text="selectedYear"></span></p>
+
+                        <div class="p-5 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold text-slate-600">Aktivtage</span>
+                                <strong class="text-base font-black text-emerald-600" x-text="stats.rest_days_stats?.active_days + ' Tage'"></strong>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold text-slate-600">Ruhetage</span>
+                                <strong class="text-base font-black text-slate-700" x-text="stats.rest_days_stats?.rest_days + ' Tage'"></strong>
+                            </div>
+                            <div class="pt-2 border-t border-slate-200 flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-700">Ruhetags-Quote</span>
+                                <strong class="text-lg font-black text-brand" x-text="stats.rest_days_stats?.rest_day_ratio_pct + '%'"></strong>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-3">Tipp aus der Sportwissenschaft: Eine gesunde Ruhetags-Quote von 35-50% sichert Superkompensation und schützt vor Übertraining.</p>
+                </div>
+
+                <!-- Monatstrend (MoM) -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Monatstrend (MoM)</h3>
+                        <p class="text-xs text-slate-500 mb-4">Aktueller Kalendermonat bisher im Vergleich zum Vormonat</p>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="p-4 bg-brand/5 border border-brand/20 rounded-xl">
+                                <span class="text-xs font-bold text-brand uppercase">Aktueller Monat</span>
+                                <div class="text-2xl font-black text-slate-900 mt-1" x-text="stats.mom_trend?.current_month?.distance_km + ' km'"></div>
+                                <div class="text-xs text-slate-500 mt-1" x-text="stats.mom_trend?.current_month?.hours + 'h • ' + stats.mom_trend?.current_month?.elevation_m + ' hm'"></div>
+                            </div>
+                            <div class="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                                <span class="text-xs font-bold text-slate-400 uppercase">Vormonat</span>
+                                <div class="text-2xl font-black text-slate-700 mt-1" x-text="stats.mom_trend?.previous_month?.distance_km + ' km'"></div>
+                                <div class="text-xs text-slate-500 mt-1" x-text="stats.mom_trend?.previous_month?.hours + 'h • ' + stats.mom_trend?.previous_month?.elevation_m + ' hm'"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-xs text-slate-500 pt-3">
+                        Einheiten bisher: <strong class="text-slate-800" x-text="stats.mom_trend?.current_month?.count"></strong> (Vormonat gesamt: <span x-text="stats.mom_trend?.previous_month?.count"></span>)
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Sportarten Breakdown Tabelle -->
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
+                <h3 class="text-base font-bold text-slate-900 mb-4">Sportarten-Aufteilung (<span x-text="selectedYear"></span>)</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left">
+                        <thead class="text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                            <tr>
+                                <th class="pb-3">Sportart</th>
+                                <th class="pb-3">Einheiten</th>
+                                <th class="pb-3">Distanz</th>
+                                <th class="pb-3">Höhenmeter</th>
+                                <th class="pb-3">Dauer</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                            <template x-for="s in stats.sports" :key="s.sport_type">
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-3 font-bold text-slate-900" x-text="s.sport_type"></td>
+                                    <td class="py-3" x-text="s.count + 'x'"></td>
+                                    <td class="py-3 font-bold" x-text="s.distance_km + ' km'"></td>
+                                    <td class="py-3" x-text="s.elevation_m + ' m'"></td>
+                                    <td class="py-3" x-text="s.moving_hours + ' Std.'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ================================================================= -->
+    <!-- MODAL: NEUES ZIEL ANLEGEN                                          -->
+    <!-- ================================================================= -->
+    <div x-show="newGoalModalOpen" 
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
+         x-transition.opacity>
+        <div @click.away="newGoalModalOpen = false"
+             class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-900">Neues Trainings-Ziel</h3>
+                <button @click="newGoalModalOpen = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
+            </div>
+
+            <div class="space-y-4">
                 <div>
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-base font-bold text-slate-900">Aktivitäten</h2>
-                        <select x-model="activityFilterSport" @change="loadActivities(1)"
-                                class="bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Titel des Ziels</label>
+                    <input type="text" x-model="newGoalForm.title" placeholder="z. B. 4.000 km Rennrad Saison 2026"
+                           class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Sportart</label>
+                        <select x-model="newGoalForm.sport_type"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand">
                             <option value="all">Alle Sportarten</option>
                             <option value="Ride">Rennrad / Rad</option>
                             <option value="Rowing">Rudern</option>
                             <option value="Run">Laufen</option>
                         </select>
                     </div>
-
-                    <div class="divide-y divide-slate-100 max-h-[460px] overflow-y-auto pr-1">
-                        <template x-for="act in activities" :key="act.id">
-                            <div class="py-3 hover:bg-slate-50/70 p-2 rounded-xl transition cursor-pointer"
-                                 @click="focusActivityOnMap(act)">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[180px]" x-text="act.name"></span>
-                                    <span class="text-xs font-semibold text-brand" x-text="act.distance_km + ' km'"></span>
-                                </div>
-                                <div class="flex items-center justify-between mt-1 text-xs text-slate-400">
-                                    <span x-text="act.date_formatted"></span>
-                                    <span x-text="act.moving_time_formatted"></span>
-                                </div>
-                                <div class="flex items-center space-x-3 mt-1.5 text-[11px] text-slate-500">
-                                    <span x-show="act.avg_watts" x-text="act.avg_watts + ' W'"></span>
-                                    <span x-show="act.w_kg" x-text="act.w_kg + ' W/kg'"></span>
-                                    <span x-show="act.tss" x-text="'TSS ' + act.tss"></span>
-                                    <span x-show="act.elevation_gain_m" x-text="act.elevation_gain_m + ' hm'"></span>
-                                </div>
-                            </div>
-                        </template>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Zeitraum</label>
+                        <select x-model="newGoalForm.period_type"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand">
+                            <option value="yearly">Jahresziel</option>
+                            <option value="monthly">Monatsziel</option>
+                            <option value="weekly">Wochenziel</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Pagination Controls -->
-                <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <button @click="loadActivities(pagination.current_page - 1)" 
-                            :disabled="pagination.current_page <= 1"
-                            class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 disabled:opacity-40 font-semibold">
-                        Zurück
-                    </button>
-                    <span x-text="'Seite ' + pagination.current_page + ' von ' + (pagination.total_pages || 1)"></span>
-                    <button @click="loadActivities(pagination.current_page + 1)" 
-                            :disabled="pagination.current_page >= pagination.total_pages"
-                            class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 disabled:opacity-40 font-semibold">
-                        Weiter
-                    </button>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Metrik</label>
+                        <select x-model="newGoalForm.metric_type"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand">
+                            <option value="distance">Distanz (km)</option>
+                            <option value="time">Trainingszeit (Std.)</option>
+                            <option value="elevation">Höhenmeter (m)</option>
+                            <option value="calories">Kalorien (kcal)</option>
+                            <option value="workouts">Workouts (Anzahl)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Zielwert</label>
+                        <input type="number" step="1" x-model.number="newGoalForm.target_value"
+                               class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-brand">
+                    </div>
+                </div>
+
+                <!-- Seasonality Curve (nur bei Jahreszielen) -->
+                <div x-show="newGoalForm.period_type === 'yearly'">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Saisonale Pacing-Kurve</label>
+                    <select x-model="newGoalForm.seasonality"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-brand">
+                        <option value="linear">Gleichmäßig (Linear - Tag 1 bis 365)</option>
+                        <option value="summer_peak">Sommer-Peak (Rennrad, MTB, Outdoor)</option>
+                        <option value="winter_peak">Winter-Peak (Rudern, Indoor, Ergometer)</option>
+                    </select>
+                    <p class="text-[11px] text-slate-400 mt-1">Passt das Soll-Ziel tagesaktuell an die Saison an (z. B. mehr km im Juli als im Januar).</p>
                 </div>
             </div>
-        </section>
 
-    </main>
+            <div class="pt-3 flex justify-end space-x-2">
+                <button @click="newGoalModalOpen = false" class="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 rounded-xl">Abbrechen</button>
+                <button @click="saveNewGoal()" class="px-5 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-xl shadow-xs transition">Ziel speichern</button>
+            </div>
+        </div>
+    </div>
 
-    <!-- Settings Modal mit Gefahrenzone -->
+    <!-- ================================================================= -->
+    <!-- SETTINGS MODAL                                                    -->
+    <!-- ================================================================= -->
     <div x-show="settingsModalOpen" 
          class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
          x-transition.opacity>
@@ -406,7 +937,7 @@ $isStravaConnected = !empty($tokenData);
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Schwellenleistung (FTP in Watt)</label>
                     <input type="number" x-model.number="settingsForm.ftp" min="50" max="600"
                            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-brand">
-                    <p class="text-[11px] text-slate-400 mt-1">Basis für Normalized Power, Intensity Factor (IF) und TSS-Berechnung.</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Basis für Normalized Power, Intensity Factor (IF) und Coggan-Leistungszonen.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Körpergewicht (kg)</label>
@@ -416,12 +947,12 @@ $isStravaConnected = !empty($tokenData);
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Max. Herzfrequenz (Spm)</label>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Max. Herzfrequenz (bpm)</label>
                         <input type="number" x-model.number="settingsForm.max_hr"
                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-brand">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Ruhepuls (Spm)</label>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Ruhepuls (bpm)</label>
                         <input type="number" x-model.number="settingsForm.rest_hr"
                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-brand">
                     </div>
@@ -456,7 +987,6 @@ $isStravaConnected = !empty($tokenData);
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Eigener Strava Client Secret (Optional)</label>
                     <input type="password" x-model="settingsForm.custom_client_secret" placeholder="••••••••••••••••"
                            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-brand">
-                    <p class="text-[11px] text-slate-400 mt-1">Nur eintragen, wenn du deine eigene Strava-Entwickler-App nutzen möchtest.</p>
                 </div>
 
                 <div class="pt-4 flex justify-end">
@@ -476,7 +1006,7 @@ $isStravaConnected = !empty($tokenData);
                         </svg>
                         <span>Achtung: Unwiderrufliche Datenlöschung</span>
                     </div>
-                    <p>Dies löscht deinen Account, alle importierten Strava-Aktivitäten, GPS-Tracks, Trainings-Einstellungen und Logs permanent aus unserer MariaDB-Datenbank und entzieht der App den Zugriff bei Strava.</p>
+                    <p>Dies löscht deinen Account, alle importierten Strava-Aktivitäten, GPS-Tracks, Trainings-Ziele und Logs permanent aus unserer Datenbank.</p>
                 </div>
 
                 <div>
@@ -500,21 +1030,41 @@ $isStravaConnected = !empty($tokenData);
     <script>
         function dashboardApp() {
             return {
+                currentTab: 'dashboard',
                 syncing: false,
                 selectedYear: new Date().getFullYear(),
                 availableYears: [new Date().getFullYear()],
                 stats: {},
                 fitness: {},
                 rowing: {},
-                activities: [],
-                pagination: { current_page: 1, total_pages: 1 },
-                activityFilterSport: 'all',
                 
+                // Aktivitäten State
+                activities: [],
+                pagination: { current_page: 1, total_pages: 1, total_items: 0 },
+                activityFilterSport: 'all',
+                activityEnvironment: 'all',
+                activitySortBy: 'date',
+                activityQuery: '',
+                expandedActivityId: null,
+
+                // Ziele State
+                goals: [],
+                newGoalModalOpen: false,
+                newGoalForm: {
+                    title: '',
+                    sport_type: 'all',
+                    metric_type: 'distance',
+                    target_value: 3000,
+                    period_type: 'yearly',
+                    year: new Date().getFullYear(),
+                    seasonality: 'linear'
+                },
+
+                // Settings
                 settingsModalOpen: false,
                 settingsTab: 'athlete',
                 settingsData: {},
                 settingsForm: { ftp: 250, weight: 75, max_hr: 190, rest_hr: 50, custom_client_id: '', custom_client_secret: '' },
-                
                 deleteConfirmPassword: '',
                 deleteLoading: false,
 
@@ -528,12 +1078,29 @@ $isStravaConnected = !empty($tokenData);
                     this.loadOverviewStats();
                     this.loadFitnessTrend();
                     this.loadRowingAnalysis();
+                    this.loadGoals();
                     this.loadActivities(1);
 
                     window.addEventListener('resize', () => {
                         this.resizeCharts();
                         if (this.map) this.map.invalidateSize();
                     });
+                },
+
+                switchTab(tab) {
+                    this.currentTab = tab;
+                    if (tab === 'dashboard') {
+                        this.$nextTick(() => {
+                            this.resizeCharts();
+                            if (this.map) this.map.invalidateSize();
+                        });
+                    }
+                },
+
+                onYearChange() {
+                    this.loadOverviewStats();
+                    this.loadGoals();
+                    this.loadActivities(1);
                 },
 
                 showToast(message, type = 'success') {
@@ -543,7 +1110,7 @@ $isStravaConnected = !empty($tokenData);
                     setTimeout(() => { this.toast.show = false; }, 4000);
                 },
 
-                // 1. Übersicht & Jahresvergleich
+                // 1. Übersicht & Statistiken
                 async loadOverviewStats() {
                     try {
                         const res = await fetch(`/api/stats_overview.php?year=${this.selectedYear}`);
@@ -553,10 +1120,13 @@ $isStravaConnected = !empty($tokenData);
                                 all_time: data.all_time,
                                 yearly: data.yearly_stats,
                                 sports: data.sports_breakdown,
+                                polarized_80_20: data.polarized_80_20,
+                                four_weeks_trend: data.four_weeks_trend,
+                                rest_days_stats: data.rest_days_stats,
+                                mom_trend: data.mom_trend
                             };
                             this.availableYears = data.available_years.length ? data.available_years : [this.selectedYear];
                         }
-
                         this.loadYearlyComparisonChart();
                     } catch (e) {
                         console.error('Stats error:', e);
@@ -570,6 +1140,7 @@ $isStravaConnected = !empty($tokenData);
                         if (!data.success) return;
 
                         const chartEl = document.getElementById('chart-yearly');
+                        if (!chartEl) return;
                         const chart = echarts.getInstanceByDom(chartEl) || echarts.init(chartEl);
 
                         const currentYearStr = String(new Date().getFullYear());
@@ -614,7 +1185,7 @@ $isStravaConnected = !empty($tokenData);
                     }
                 },
 
-                // 2. Fitness & Form (CTL / ATL / TSB)
+                // 2. Fitness & Form (CTL / ATL / TSB / ACWR)
                 async loadFitnessTrend() {
                     try {
                         const res = await fetch('/api/fitness_trend.php?days=180');
@@ -624,6 +1195,7 @@ $isStravaConnected = !empty($tokenData);
                         this.fitness = data;
 
                         const chartEl = document.getElementById('chart-fitness');
+                        if (!chartEl) return;
                         const chart = echarts.getInstanceByDom(chartEl) || echarts.init(chartEl);
 
                         chart.setOption({
@@ -655,226 +1227,250 @@ $isStravaConnected = !empty($tokenData);
                                     smooth: true,
                                     showSymbol: false,
                                     data: data.series.atl,
-                                    lineStyle: { color: '#e11d48', width: 1.5, type: 'dashed' }
+                                    lineStyle: { color: '#f43f5e', width: 1.5, type: 'dashed' }
                                 },
                                 {
                                     name: 'TSB (Form)',
                                     type: 'line',
                                     smooth: true,
                                     showSymbol: false,
-                                    areaStyle: {
-                                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                            { offset: 0, color: 'rgba(5, 150, 105, 0.25)' },
-                                            { offset: 1, color: 'rgba(5, 150, 105, 0.0)' }
-                                        ])
-                                    },
                                     data: data.series.tsb,
-                                    lineStyle: { color: '#059669', width: 2 }
+                                    areaStyle: { opacity: 0.1, color: '#10b981' },
+                                    lineStyle: { color: '#10b981', width: 2 }
                                 }
                             ]
                         }, true);
-
                     } catch (e) {
                         console.error('Fitness trend error:', e);
                     }
                 },
 
-                // 3. Ruder-Analyse
+                getAcwrBadgeClass(status) {
+                    switch (status) {
+                        case 'sweetspot': return 'bg-emerald-100 text-emerald-800';
+                        case 'caution':   return 'bg-amber-100 text-amber-800';
+                        case 'danger':    return 'bg-rose-100 text-rose-800';
+                        default:          return 'bg-sky-100 text-sky-800';
+                    }
+                },
+
+                // 3. Ruder-Spezial
                 async loadRowingAnalysis() {
                     try {
                         const res = await fetch('/api/rowing_analysis.php');
                         const data = await res.json();
-                        if (!data.success) return;
-
-                        this.rowing = data;
-
-                        if (data.scatter_data && data.scatter_data.length) {
-                            this.$nextTick(() => {
-                                const chartEl = document.getElementById('chart-rowing-scatter');
-                                if (!chartEl) return;
-                                const chart = echarts.getInstanceByDom(chartEl) || echarts.init(chartEl);
-
-                                const scatterPoints = data.scatter_data.map(d => [d.spm, d.dps, d.name, d.split_formatted, d.date]);
-
-                                chart.setOption({
-                                    tooltip: {
-                                        formatter: p => `<strong>${p.value[2]}</strong><br>Datum: ${p.value[4]}<br>Kadenz: ${p.value[0]} SPM<br>DPS: ${p.value[1]} m/Zug<br>Pace: ${p.value[3]} / 500m`
-                                    },
-                                    grid: { top: 20, right: 20, bottom: 35, left: 40 },
-                                    xAxis: {
-                                        name: 'SPM',
-                                        type: 'value',
-                                        splitLine: { lineStyle: { color: '#f1f5f9' } },
-                                        axisLabel: { color: '#64748b' }
-                                    },
-                                    yAxis: {
-                                        name: 'Meter / Zug',
-                                        type: 'value',
-                                        splitLine: { lineStyle: { color: '#f1f5f9' } },
-                                        axisLabel: { color: '#64748b' }
-                                    },
-                                    series: [{
-                                        type: 'scatter',
-                                        symbolSize: 11,
-                                        data: scatterPoints,
-                                        itemStyle: { color: '#0284c7' }
-                                    }]
-                                }, true);
-                            });
+                        if (data.success) {
+                            this.rowing = data;
                         }
                     } catch (e) {
                         console.error('Rowing error:', e);
                     }
                 },
 
-                // 4. Aktivitäten & Karte
+                // 4. Ziele (Goals)
+                async loadGoals() {
+                    try {
+                        const res = await fetch(`/api/goals.php?year=${this.selectedYear}`);
+                        const data = await res.json();
+                        if (data.success) {
+                            this.goals = data.goals;
+                        }
+                    } catch (e) {
+                        console.error('Goals error:', e);
+                    }
+                },
+
+                openNewGoalModal() {
+                    this.newGoalForm.year = this.selectedYear;
+                    this.newGoalModalOpen = true;
+                },
+
+                async saveNewGoal() {
+                    try {
+                        const res = await fetch('/api/goals.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.newGoalForm)
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            this.showToast('Ziel erfolgreich gespeichert!');
+                            this.newGoalModalOpen = false;
+                            this.loadGoals();
+                        } else {
+                            this.showToast(data.error || 'Fehler beim Speichern', 'error');
+                        }
+                    } catch (e) {
+                        this.showToast('Netzwerkfehler', 'error');
+                    }
+                },
+
+                async deleteGoal(id) {
+                    if (!confirm('Möchtest du dieses Ziel wirklich löschen?')) return;
+                    try {
+                        const res = await fetch(`/api/goals.php?id=${id}`, { method: 'DELETE' });
+                        const data = await res.json();
+                        if (data.success) {
+                            this.showToast('Ziel gelöscht');
+                            this.loadGoals();
+                        }
+                    } catch (e) {
+                        this.showToast('Fehler beim Löschen', 'error');
+                    }
+                },
+
+                // 5. Aktivitäten
                 async loadActivities(page = 1) {
                     try {
-                        let url = `/api/activities.php?page=${page}&per_page=15`;
-                        if (this.activityFilterSport !== 'all') {
-                            url += `&sport_type=${this.activityFilterSport}`;
-                        }
-
-                        const res = await fetch(url);
+                        const params = new URLSearchParams({
+                            page: page,
+                            per_page: 20,
+                            sport_type: this.activityFilterSport,
+                            environment: this.activityEnvironment,
+                            sort_by: this.activitySortBy,
+                            query: this.activityQuery,
+                            year: this.selectedYear
+                        });
+                        const res = await fetch(`/api/activities.php?${params}`);
                         const data = await res.json();
                         if (data.success) {
                             this.activities = data.activities;
                             this.pagination = data.pagination;
-                            this.renderPolylinesOnMap(data.activities);
+                            this.renderMapPolylines();
                         }
                     } catch (e) {
                         console.error('Activities error:', e);
                     }
                 },
 
-                // Leaflet Map Initialisierung
-                initMap() {
-                    // Start-Zentrum Wien / Österreich als Standard
-                    this.map = L.map('leaflet-map', { zoomControl: true }).setView([48.2082, 16.3738], 11);
-
-                    // OpenStreetMap (100% frei, zuverlässig, ohne API-Key)
-                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                        maxZoom: 19
-                    }).addTo(this.map);
-
-                    // Verhindert graue Kacheln/Fehlausrichtungen bei flexiblen CSS-Layouts
-                    setTimeout(() => {
-                        if (this.map) this.map.invalidateSize();
-                    }, 300);
+                setSportFilter(sport) {
+                    this.activityFilterSport = sport;
+                    this.loadActivities(1);
                 },
 
-                // Zeichnet alle geladenen Polylines auf die Karte
-                renderPolylinesOnMap(acts) {
+                toggleActivityExpand(id) {
+                    this.expandedActivityId = this.expandedActivityId === id ? null : id;
+                },
+
+                // 6. Leaflet Map
+                initMap() {
+                    const mapEl = document.getElementById('leaflet-map');
+                    if (!mapEl) return;
+
+                    this.map = L.map('leaflet-map').setView([47.5, 14.5], 7);
+
+                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    }).addTo(this.map);
+
+                    setTimeout(() => {
+                        this.map.invalidateSize();
+                    }, 400);
+                },
+
+                renderMapPolylines() {
                     if (!this.map) return;
 
-                    // Größe neu berechnen, falls sich Container geändert hat
-                    this.map.invalidateSize();
-
-                    // Alte Layer leeren
                     this.polylineLayers.forEach(l => this.map.removeLayer(l));
                     this.polylineLayers = [];
 
-                    const allBounds = [];
+                    const bounds = [];
 
-                    acts.forEach(act => {
-                        if (!act.summary_polyline) return;
-                        const coords = this.decodePolyline(act.summary_polyline);
-                        if (!coords || !coords.length) return;
+                    this.activities.forEach(act => {
+                        if (act.summary_polyline) {
+                            const coords = this.decodePolyline(act.summary_polyline);
+                            if (coords.length > 0) {
+                                const line = L.polyline(coords, {
+                                    color: '#FC4C02',
+                                    weight: 2.5,
+                                    opacity: 0.65
+                                }).addTo(this.map);
 
-                        const polyline = L.polyline(coords, {
-                            color: '#FC4C02',
-                            weight: 3.5,
-                            opacity: 0.75
-                        }).bindPopup(`<strong>${act.name}</strong><br>${act.distance_km} km • ${act.date_formatted}`);
-
-                        polyline.addTo(this.map);
-                        this.polylineLayers.push(polyline);
-                        coords.forEach(pt => allBounds.push(pt));
+                                line.bindPopup(`<strong>${act.name}</strong><br>${act.date_formatted} • ${act.distance_km} km`);
+                                this.polylineLayers.push(line);
+                                coords.forEach(c => bounds.push(c));
+                            }
+                        }
                     });
 
-                    if (allBounds.length > 0) {
-                        this.map.fitBounds(allBounds, { padding: [30, 30] });
+                    if (bounds.length > 0) {
+                        this.map.fitBounds(bounds, { padding: [25, 25] });
                     }
                 },
 
                 focusActivityOnMap(act) {
-                    if (!this.map || !act.summary_polyline) return;
-                    const coords = this.decodePolyline(act.summary_polyline);
-                    if (coords && coords.length) {
-                        this.map.fitBounds(coords, { padding: [40, 40] });
+                    if (this.currentTab !== 'dashboard') {
+                        this.switchTab('dashboard');
+                    }
+                    if (act.start_lat && act.start_lng) {
+                        this.map.setView([act.start_lat, act.start_lng], 13);
                     }
                 },
 
-                // Google Encoded Polyline Decoder (reines JavaScript)
                 decodePolyline(str, precision = 5) {
                     let index = 0, lat = 0, lng = 0, coordinates = [], shift = 0, result = 0, byte = null, latitude_change, longitude_change, factor = Math.pow(10, precision);
                     while (index < str.length) {
                         byte = null; shift = 0; result = 0;
-                        do {
-                            byte = str.charCodeAt(index++) - 63;
-                            result |= (byte & 0x1f) << shift;
-                            shift += 5;
-                        } while (byte >= 0x20);
+                        do { byte = str.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
                         latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
                         shift = 0; result = 0;
-                        do {
-                            byte = str.charCodeAt(index++) - 63;
-                            result |= (byte & 0x1f) << shift;
-                            shift += 5;
-                        } while (byte >= 0x20);
+                        do { byte = str.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
                         longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-                        lat += latitude_change;
-                        lng += longitude_change;
+                        lat += latitude_change; lng += longitude_change;
                         coordinates.push([lat / factor, lng / factor]);
                     }
                     return coordinates;
                 },
 
-                // 5. Synchronisation anstoßen
+                resizeCharts() {
+                    const yEl = document.getElementById('chart-yearly');
+                    if (yEl) { const c = echarts.getInstanceByDom(yEl); if (c) c.resize(); }
+                    const fEl = document.getElementById('chart-fitness');
+                    if (fEl) { const c = echarts.getInstanceByDom(fEl); if (c) c.resize(); }
+                },
+
+                // 7. Synchronisation & Settings
                 async triggerSync() {
                     this.syncing = true;
-                    this.showToast('Synchronisiere mit Strava API...', 'success');
-
                     try {
                         const res = await fetch('/api/sync.php', { method: 'POST' });
                         const data = await res.json();
-
-                        if (data.status === 'success') {
-                            this.showToast(data.message, 'success');
-                            await this.loadOverviewStats();
-                            await this.loadFitnessTrend();
-                            await this.loadActivities(1);
+                        if (data.success) {
+                            this.showToast(data.message || 'Synchronisation abgeschlossen!');
+                            this.loadOverviewStats();
+                            this.loadFitnessTrend();
+                            this.loadGoals();
+                            this.loadActivities(1);
                         } else {
-                            this.showToast(data.message || 'Sync fehlgeschlagen', 'error');
+                            this.showToast(data.error || 'Fehler beim Abgleich', 'error');
                         }
                     } catch (e) {
-                        this.showToast('Netzwerkfehler beim Synchronisieren', 'error');
+                        this.showToast('Netzwerkfehler beim Sync', 'error');
                     } finally {
                         this.syncing = false;
                     }
                 },
 
-                // 6. Settings Modal
                 async openSettingsModal() {
+                    this.settingsModalOpen = true;
                     try {
                         const res = await fetch('/api/settings.php');
                         const data = await res.json();
                         if (data.success) {
                             this.settingsData = data;
                             this.settingsForm = {
-                                ftp: data.athlete.ftp,
-                                weight: data.athlete.weight,
-                                max_hr: data.athlete.max_hr,
-                                rest_hr: data.athlete.rest_hr,
-                                custom_client_id: data.strava.custom_client_id || '',
-                                custom_client_secret: '',
+                                ftp: data.athlete?.ftp ?? 250,
+                                weight: data.athlete?.weight ?? 75,
+                                max_hr: data.athlete?.max_hr ?? 190,
+                                rest_hr: data.athlete?.rest_hr ?? 50,
+                                custom_client_id: data.strava?.custom_client_id ?? '',
+                                custom_client_secret: ''
                             };
                         }
                     } catch (e) {
                         console.error('Settings error:', e);
                     }
-                    this.settingsModalOpen = true;
                 },
 
                 async saveSettings() {
@@ -886,8 +1482,11 @@ $isStravaConnected = !empty($tokenData);
                         });
                         const data = await res.json();
                         if (data.success) {
-                            this.showToast('Einstellungen erfolgreich gespeichert!', 'success');
+                            this.showToast('Einstellungen gespeichert!');
                             this.settingsModalOpen = false;
+                            this.loadOverviewStats();
+                            this.loadFitnessTrend();
+                            this.loadActivities(this.pagination.current_page);
                         } else {
                             this.showToast(data.error || 'Fehler beim Speichern', 'error');
                         }
@@ -896,62 +1495,29 @@ $isStravaConnected = !empty($tokenData);
                     }
                 },
 
-                // 7. Permanente Account-Löschung
                 async confirmDeleteAccount() {
-                    if (!confirm('Bist du absolut sicher? Dies löscht ausnahmslos alle deine Daten unwiderruflich!')) {
-                        return;
-                    }
-
+                    if (!confirm('Bist du absolut sicher? Alle deine Daten werden unwiderruflich gelöscht!')) return;
                     this.deleteLoading = true;
-
                     try {
                         const res = await fetch('/api/account_delete.php', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ password_confirm: this.deleteConfirmPassword })
+                            body: JSON.stringify({ password: this.deleteConfirmPassword })
                         });
                         const data = await res.json();
-
                         if (data.success) {
-                            alert(data.message);
-                            window.location.href = '/login.php';
+                            alert('Dein Account wurde erfolgreich gelöscht.');
+                            window.location.href = 'login.php';
                         } else {
-                            this.showToast(data.error || 'Löschung fehlgeschlagen', 'error');
+                            this.showToast(data.error || 'Löschen fehlgeschlagen', 'error');
                         }
                     } catch (e) {
-                        this.showToast('Fehler bei der Verbindung', 'error');
+                        this.showToast('Netzwerkfehler beim Löschen', 'error');
                     } finally {
                         this.deleteLoading = false;
                     }
-                },
-
-                getTsbBadgeClass(tsb) {
-                    if (tsb === null || tsb === undefined) return 'bg-slate-100 text-slate-600';
-                    if (tsb >= 10) return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
-                    if (tsb >= -10) return 'bg-sky-50 text-sky-700 border border-sky-200';
-                    if (tsb >= -25) return 'bg-amber-50 text-amber-700 border border-amber-200';
-                    return 'bg-rose-50 text-rose-700 border border-rose-200';
-                },
-
-                getTsbLabel(tsb) {
-                    if (tsb === null || tsb === undefined) return 'Keine Daten';
-                    if (tsb >= 15) return 'Peak Form';
-                    if (tsb >= 5) return 'Frisch';
-                    if (tsb >= -10) return 'Neutral';
-                    if (tsb >= -25) return 'Aufbau / Belastung';
-                    return 'Hohe Ermüdung';
-                },
-
-                resizeCharts() {
-                    ['chart-yearly', 'chart-fitness', 'chart-rowing-scatter'].forEach(id => {
-                        const el = document.getElementById(id);
-                        if (el) {
-                            const inst = echarts.getInstanceByDom(el);
-                            if (inst) inst.resize();
-                        }
-                    });
                 }
-            }
+            };
         }
     </script>
 </body>
