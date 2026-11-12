@@ -12,6 +12,7 @@ Entwickelt für den Betrieb auf Standard-Webhosting-Umgebungen (z. B. Profihost 
 - [Komponenten-Übersicht](#komponenten-übersicht)
 - [Sportwissenschaftliche Berechnungen](#sportwissenschaftliche-berechnungen)
 - [Systemanforderungen](#systemanforderungen)
+- [Git-Deployment auf den Webspace (SSH Hook-Deploy)](#git-deployment-auf-den-webspace-ssh-hook-deploy)
 - [Schritt-für-Schritt Deployment-Anleitung ("Deppensicher")](#schritt-für-schritt-deployment-anleitung-deppensicher)
 - [Verzeichnisstruktur](#verzeichnisstruktur)
 - [Versionshistorie & Release-Management](#versionshistorie--release-management)
@@ -114,6 +115,67 @@ flowchart TD
 - **Datenbank:** MariaDB ab 10.5 oder MySQL ab 8.0 (InnoDB Engine zwingend erforderlich für Foreign Keys).
 - **Webserver:** Apache mit `mod_rewrite` & aktiviertem SSL-Zertifikat (HTTPS).
 - **Strava Account:** Entwickler-Zugang unter [strava.com/settings/api](https://www.strava.com/settings/api).
+
+---
+
+## Git-Deployment auf den Webspace (SSH Hook-Deploy)
+
+Das Deployment auf den Produktivserver erfolgt komfortabel und automatisiert per Git über einen `post-receive`-Hook. Dadurch müssen keine Dateien mehr manuell per FTP hochgeladen werden.
+
+```text
+[Lokaler PC: my_STRV] 
+       │ git push live main
+       ▼
+[Server: ~/repos/my_STRV.git] (Bare Repository)
+       │ Hook: hooks/post-receive
+       ▼
+[Live-Webspace: /home/welbmqup/www.weltler.at/my_STRV]
+```
+
+### 1. Lokale SSH-Konfiguration (`~/.ssh/config`)
+Auf Windows-Systemen behebt die Angabe des Ciphers `aes256-gcm@openssh.com` eventuelle `Corrupted MAC on input`-Fehler des OpenSSH-Clients:
+
+```sshconfig
+Host profihost
+    HostName cloud8-vm123.de-nserver.de
+    User welbmqup
+    Port 22
+    Ciphers aes256-gcm@openssh.com
+```
+
+### 2. Server-Konfiguration (Einmalig)
+Auf dem Server liegt ein Bare-Repository mit Ausroll-Hook:
+
+* **Repository:** `~/repos/my_STRV.git` (erstellt via `git init --bare`)
+* **Hook-Skript:** `~/repos/my_STRV.git/hooks/post-receive` (ausführbar mit `chmod +x`):
+
+```bash
+#!/bin/bash
+TARGET="/home/welbmqup/www.weltler.at/my_STRV"
+GIT_DIR="/home/welbmqup/repos/my_STRV.git"
+
+while read oldrev newrev ref
+do
+    BRANCH=$(echo $ref | sed 's/refs\/heads\///')
+    if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+        echo "--> Deploye Branch '$BRANCH' nach $TARGET ..."
+        git --work-tree="$TARGET" --git-dir="$GIT_DIR" checkout -f $BRANCH
+        echo "--> Deployment erfolgreich abgeschlossen!"
+    fi
+done
+```
+
+### 3. Lokales Remote-Ziel hinzufügen (Einmalig)
+```powershell
+git remote add live profihost:/home/welbmqup/repos/my_STRV.git
+```
+
+### 4. Live-Deployment ausführen
+Nach lokalen Änderungen und Commits wird der Stand mit folgendem Befehl direkt auf dem Server aktualisiert:
+
+```powershell
+git push live main
+```
 
 ---
 
