@@ -22,13 +22,12 @@ define('DB_CHARSET', 'utf8mb4');
 // Registriere deine App unter https://www.strava.com/settings/api
 define('GLOBAL_STRAVA_CLIENT_ID', 'DEINE_STRAVA_CLIENT_ID');
 define('GLOBAL_STRAVA_CLIENT_SECRET', 'DEIN_STRAVA_CLIENT_SECRET');
-define('GLOBAL_STRAVA_REDIRECT_URI', 'https://weltler.at/auth/callback.php');
+define('GLOBAL_STRAVA_REDIRECT_URI', 'https://strv.weltler.at/auth/callback.php');
 
 // ---------------------------------------------------------------------
 // 3. Sichere Session-Initialisierung
 // ---------------------------------------------------------------------
 if (session_status() === PHP_SESSION_NONE) {
-    // Bei HTTPS wird secure=true erzwungen
     $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
                 (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
 
@@ -68,7 +67,6 @@ function getDbConnection(): PDO
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            // Bei Produktions-Host niemals Passwörter im Callstack leaken
             error_log('Database connection failed: ' . $e->getMessage());
             die('Datenbankverbindung fehlgeschlagen. Bitte System-Administrator kontaktieren.');
         }

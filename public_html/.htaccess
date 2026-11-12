@@ -1,0 +1,18 @@
+# =====================================================================
+# my_STRV - Apache Webserver Konfiguration (public_html/.htaccess)
+# =====================================================================
+
+# 1. Startdatei definieren (verhindert 403 Forbidden beim Aufruf der Domain)
+DirectoryIndex index.php login.php
+
+# 2. Verzeichnisauflistung verbieten
+Options -Indexes
+
+# 3. RewriteEngine & HTTPS-Erzwingung
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Automatische Weiterleitung von http:// auf https://
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
